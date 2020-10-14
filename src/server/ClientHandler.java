@@ -55,6 +55,15 @@ public class ClientHandler {
                             sendMsg("/end");
                             break;
                         }
+                        if (str.startsWith("/w ")) {
+                            String[] splitedMsg = str.split(" ");
+                            int len = splitedMsg[0].length() + splitedMsg[1].length() + 2;
+                            if (splitedMsg[1].equals(getNickname())) {
+                                continue;
+                            }
+                            server.sendMsgToOneClient(this, splitedMsg[1], str.substring(len));
+                            continue;
+                        }
                         server.broadcastMsg(this, str);
                     }
                 } catch (IOException e) {
