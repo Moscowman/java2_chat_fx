@@ -53,6 +53,21 @@ public class Server {
         }
     }
 
+    public void sendMsgToOneClient(ClientHandler sender, String receiver, String msg) {
+        String message = String.format("[ %s ]: %s", sender.getNickname(), msg);
+        boolean receiverFound = false;
+        for (ClientHandler c : clients) {
+            if (receiver.equals(c.getNickname())) {
+                receiverFound = true;
+                c.sendMsg(message);
+                break;
+            }
+        }
+        if (receiverFound) {
+            sender.sendMsg(message);
+        }
+    }
+
     public void subscribe(ClientHandler clientHandler) {
         clients.add(clientHandler);
     }
