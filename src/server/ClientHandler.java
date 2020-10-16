@@ -12,7 +12,7 @@ public class ClientHandler {
     Socket socket;
 
     private String nickname;
-    //private String login;
+    private String login;
 
     public ClientHandler(Server server, Socket socket) {
         try {
@@ -24,9 +24,25 @@ public class ClientHandler {
 
             new Thread(() -> {
                 try {
+                    socket.setSoTimeout(5000);
+
                     //цикл аутентификации
                     while (true) {
                         String str = in.readUTF();
+
+                        if (str.startsWith("/reg ")) {
+                            String[] token = str.split("\\s");
+                            if (token.length < 4) {
+                                continue;
+                            }
+                            boolean b = server.getAuthService()
+                                    .registration(token[1], token[2], token[3]);
+                            if (b) {
+                                sendMsg("/regok");
+                            } else {
+                                sendMsg("/regno");
+                            }
+                        }
 
                         if (str.startsWith("/auth ")) {
                             String[] token = str.split("\\s");
@@ -35,37 +51,41 @@ public class ClientHandler {
                             }
                             String newNick = server.getAuthService()
                                     .getNicknameByLoginAndPassword(token[1], token[2]);
-                            if (newNick != null){
-                                nickname = newNick;
-                                server.subscribe(this);
-                                sendMsg("/authok "+ newNick);
-                                break;
+                            if (newNick != null) {
+                                login = token[1];
+                                if (!server.isLoginAuthenticated(login)) {
+                                    nickname = newNick;
+                                    sendMsg("/authok " + newNick);
+                                    server.subscribe(this);
+                                    break;
+                                } else {
+                                    sendMsg("С этим логином уже вошли в чат");
+                                }
                             } else {
                                 sendMsg("Неверный логин / пароль");
                             }
                         }
                     }
                     //цикл работы
-
-
                     while (true) {
                         String str = in.readUTF();
-
-                        if (str.equals("/end")) {
-                            sendMsg("/end");
-                            break;
-                        }
-                        if (str.startsWith("/w ")) {
-                            String[] splitedMsg = str.split(" ");
-                            int len = splitedMsg[0].length() + splitedMsg[1].length() + 2;
-                            if (splitedMsg[1].equals(getNickname())) {
-                                continue;
+                        if (str.startsWith("/")) {
+                            if (str.equals("/end")) {
+                                sendMsg("/end");
+                                break;
                             }
-                            server.sendMsgToOneClient(this, splitedMsg[1], str.substring(len));
-                            continue;
+                            if (str.startsWith("/w ")) {
+                                String[] token = str.split("\\s", 3);
+                                if (token.length < 3) {
+                                    continue;
+                                }
+                                server.privateMsg(this, token[1], token[2]);
+                            }
+                        } else {
+                            server.broadcastMsg(this, str);
                         }
-                        server.broadcastMsg(this, str);
                     }
+                    //SocketTimeoutException
                 } catch (IOException e) {
                     e.printStackTrace();
                 } finally {
@@ -96,5 +116,9 @@ public class ClientHandler {
 
     public String getNickname() {
         return nickname;
+    }
+
+    public String getLogin() {
+        return login;
     }
 }
